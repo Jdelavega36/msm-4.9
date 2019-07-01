@@ -43,6 +43,7 @@
 #include <linux/nls.h>
 #include <linux/of.h>
 #include <linux/blkdev.h>
+#include <linux/hwinfo.h>
 #include "ufshcd.h"
 #include "ufshci.h"
 #include "ufs_quirks.h"
@@ -7963,6 +7964,10 @@ static int ufs_read_device_desc_data(struct ufs_hba *hba)
 out:
 	kfree(desc_buf);
 	return err;
+	update_hardware_info(TYPE_EMMC, hba->dev_info.w_manufacturer_id);
+	dev_info(hba->dev, "UFS manufacturer id: 0x%04X\n", hba->dev_info.w_manufacturer_id);
+
+	return 0;
 }
 
 static void ufshcd_init_desc_sizes(struct ufs_hba *hba)
@@ -10299,7 +10304,8 @@ static int ufshcd_devfreq_scale(struct ufs_hba *hba, bool scale_up)
 	 * hibern8 manually, this is to avoid auto hibern8
 	 * racing during clock frequency scaling sequence.
 	 */
-	if (ufshcd_is_auto_hibern8_supported(hba)) {
+	if (ufshcd_is_auto_hibern8_supported(hba)
+
 		/*
 		 * Scaling prepare acquires the rw_sem: lock
 		 * h8 may sleep in case of errors.
@@ -10434,8 +10440,6 @@ static ssize_t ufshcd_clkscale_enable_store(struct device *dev,
 	cancel_work_sync(&hba->clk_scaling.resume_work);
 
 	hba->clk_scaling.is_allowed = value;
-
-	flush_work(&hba->eh_work);
 
 	if (value) {
 		ufshcd_resume_clkscaling(hba);
